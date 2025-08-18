@@ -7,12 +7,11 @@ const prisma = new PrismaClient();
 
 /**
  * POST /api/orders/create
- * Create new order from customer cart
+ * Create new order from customer cart (PUBLIC - no auth needed)
  */
-router.post('/create', authenticateQRToken, async (req, res) => {
+router.post('/create', async (req, res) => {
   try {
-    const { items } = req.body; // [{ menuItemId, qty, notes }]
-    const { tenantId, restaurantId, tableId } = req;
+    const { items, tenantId, restaurantId, tableId } = req.body; // [{ menuItemId, qty, notes }]
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Order items required' });

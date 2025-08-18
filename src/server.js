@@ -48,6 +48,21 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/session', sessionRoutes);
 app.use('/api/admin', adminRoutes);
 
+// Root route
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    message: 'QR Menu System API',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      auth: '/api/auth',
+      menu: '/api/menu',
+      orders: '/api/orders',
+      admin: '/api/admin'
+    }
+  });
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.status(200).json({ 
