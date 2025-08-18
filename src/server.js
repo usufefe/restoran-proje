@@ -12,9 +12,11 @@ const prisma = new PrismaClient();
 const app = express();
 const server = createServer(app);
 // Parse CORS origins
+console.log('CORS_ORIGIN env:', process.env.CORS_ORIGIN);
 const corsOrigins = process.env.CORS_ORIGIN 
   ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
   : ["http://localhost:3000"];
+console.log('Parsed CORS origins:', corsOrigins);
 
 const io = new Server(server, {
   cors: {
