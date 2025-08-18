@@ -11,9 +11,14 @@ const prisma = new PrismaClient();
 
 const app = express();
 const server = createServer(app);
+// Parse CORS origins
+const corsOrigins = process.env.CORS_ORIGIN 
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+  : ["http://localhost:3000"];
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    origin: corsOrigins,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"]
   }
 });
@@ -21,7 +26,7 @@ const io = new Server(server, {
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+  origin: corsOrigins,
   credentials: true
 }));
 app.use(morgan('combined'));
@@ -43,7 +48,12 @@ app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+  res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    service: 'QR Menu System API',
+    version: '1.0.0'
+  });
 });
 
 // WebSocket handling
