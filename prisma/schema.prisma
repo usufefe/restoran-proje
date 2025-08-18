@@ -1,0 +1,229 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id           String       @id @default(uuid())
+  name         String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  
+  restaurants  Restaurant[]
+  tables       Table[]
+  users        User[]
+  orders       Order[]
+  tableSessions TableSession[]
+  
+  @@map("tenants")
+}
+
+model Restaurant {
+  id          String    @id @default(uuid())
+  tenantId    String    @map("tenant_id")
+  name        String
+  address     String?
+  kdvSchema   String?   @map("kdv_schema")
+  currency    String    @default("TRY")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tables      Table[]
+  menuCategories MenuCategory[]
+  menuItems   MenuItem[]
+  orders      Order[]
+  kitchenTickets KitchenTicket[]
+  
+  @@map("restaurants")
+}
+
+model Table {
+  id           String    @id @default(uuid())
+  tenantId     String    @map("tenant_id")
+  restaurantId String    @map("restaurant_id")
+  code         String
+  name         String
+  qrSalt       String    @map("qr_salt") @default(uuid())
+  isActive     Boolean   @map("is_active") @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  orders       Order[]
+  tableSessions TableSession[]
+  
+  @@unique([restaurantId, code])
+  @@map("tables")
+}
+
+model MenuCategory {
+  id           String     @id @default(uuid())
+  tenantId     String     @map("tenant_id")
+  restaurantId String     @map("restaurant_id")
+  name         String
+  sort         Int        @default(0)
+  isActive     Boolean    @map("is_active") @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  menuItems    MenuItem[]
+  
+  @@map("menu_categories")
+}
+
+model MenuItem {
+  id           String      @id @default(uuid())
+  tenantId     String      @map("tenant_id")
+  restaurantId String      @map("restaurant_id")
+  categoryId   String      @map("category_id")
+  name         String
+  description  String?
+  price        Float
+  vatRate      Float       @map("vat_rate") @default(18.00)
+  sku          String?
+  isActive     Boolean     @map("is_active") @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  category     MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderItems   OrderItem[]
+  
+  @@map("menu_items")
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  READY
+  SERVED
+  CLOSED
+  CANCELLED
+}
+
+enum OrderItemStatus {
+  PENDING
+  FIRED
+  IN_PROGRESS
+  READY
+  SERVED
+}
+
+model Order {
+  id           String      @id @default(uuid())
+  tenantId     String      @map("tenant_id")
+  restaurantId String      @map("restaurant_id")
+  tableId      String      @map("table_id")
+  status       OrderStatus @default(PENDING)
+  subtotal     Float       @default(0)
+  vatTotal     Float       @map("vat_total") @default(0)
+  grandTotal   Float       @map("grand_total") @default(0)
+  paymentMethod String?    @map("payment_method")
+  createdAt    DateTime    @default(now())
+  closedAt     DateTime?   @map("closed_at")
+  updatedAt    DateTime    @updatedAt
+  
+  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  table        Table       @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  orderItems   OrderItem[]
+  kitchenTickets KitchenTicket[]
+  
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String          @id @default(uuid())
+  orderId    String          @map("order_id")
+  menuItemId String          @map("menu_item_id")
+  qty        Int
+  unitPrice  Float           @map("unit_price")
+  vatRate    Float           @map("vat_rate")
+  notes      String?
+  status     OrderItemStatus @default(PENDING)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  
+  order      Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem   MenuItem        @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  
+  @@map("order_items")
+}
+
+model TableSession {
+  id           String    @id @default(uuid())
+  tenantId     String    @map("tenant_id")
+  restaurantId String    @map("restaurant_id")
+  tableId      String    @map("table_id")
+  sessionToken String    @map("session_token") @unique
+  openedAt     DateTime  @map("opened_at") @default(now())
+  closedAt     DateTime? @map("closed_at")
+  active       Boolean   @default(true)
+  
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  table        Table     @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  
+  @@map("table_sessions")
+}
+
+enum UserRole {
+  ADMIN
+  CHEF
+  WAITER
+  CASHIER
+}
+
+model User {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  role      UserRole
+  name      String
+  email     String   @unique
+  hash      String
+  isActive  Boolean  @map("is_active") @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@map("users")
+}
+
+enum KitchenStation {
+  HOT
+  COLD
+  BAR
+}
+
+enum TicketStatus {
+  PENDING
+  PRINTED
+  IN_PROGRESS
+  READY
+}
+
+model KitchenTicket {
+  id           String        @id @default(uuid())
+  orderId      String        @map("order_id")
+  restaurantId String        @map("restaurant_id")
+  station      KitchenStation
+  status       TicketStatus  @default(PENDING)
+  printedAt    DateTime?     @map("printed_at")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  
+  @@map("kitchen_tickets")
+}
