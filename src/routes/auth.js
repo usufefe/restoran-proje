@@ -13,9 +13,11 @@ const prisma = new PrismaClient();
  */
 router.post('/login', async (req, res) => {
   try {
+    console.log('🔥 Login request received:', req.body);
     const { email, password } = req.body;
 
     if (!email || !password) {
+      console.log('❌ Missing email or password');
       return res.status(400).json({ error: 'Email and password required' });
     }
 
