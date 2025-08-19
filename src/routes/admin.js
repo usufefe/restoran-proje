@@ -251,7 +251,7 @@ router.post('/restaurants/:restaurantId/items', requireRole(['ADMIN']), async (r
         name,
         description,
         price: parseFloat(price),
-        vatRate: parseFloat(vatRate),
+        vatRate: parseFloat(vatRate || 0),
         sku,
         isActive: true
       }
@@ -269,6 +269,65 @@ router.post('/restaurants/:restaurantId/items', requireRole(['ADMIN']), async (r
   } catch (error) {
     console.error('Menu item creation error:', error);
     res.status(500).json({ error: 'Failed to create menu item' });
+  }
+});
+
+/**
+ * PUT /api/admin/restaurants/:restaurantId/items/:itemId
+ * Update menu item
+ */
+router.put('/restaurants/:restaurantId/items/:itemId', requireRole(['ADMIN']), async (req, res) => {
+  try {
+    const { restaurantId, itemId } = req.params;
+    const { categoryId, name, description, price, vatRate, sku, isActive } = req.body;
+
+    if (!name || !price) {
+      return res.status(400).json({ error: 'Name and price required' });
+    }
+
+    // Verify item belongs to this restaurant and tenant
+    const existingItem = await prisma.menuItem.findFirst({
+      where: {
+        id: itemId,
+        restaurantId,
+        tenantId: req.tenantId
+      }
+    });
+
+    if (!existingItem) {
+      return res.status(404).json({ error: 'Menu item not found' });
+    }
+
+    const updateData = {
+      name,
+      description: description || null,
+      price: parseFloat(price),
+      isActive: isActive !== undefined ? isActive : existingItem.isActive
+    };
+
+    // Add optional fields if provided
+    if (categoryId) updateData.categoryId = categoryId;
+    if (vatRate !== undefined) updateData.vatRate = parseFloat(vatRate || 0);
+    if (sku !== undefined) updateData.sku = sku;
+
+    const updatedItem = await prisma.menuItem.update({
+      where: { id: itemId },
+      data: updateData
+    });
+
+    res.json({
+      id: updatedItem.id,
+      name: updatedItem.name,
+      description: updatedItem.description,
+      price: parseFloat(updatedItem.price),
+      vatRate: parseFloat(updatedItem.vatRate),
+      sku: updatedItem.sku,
+      isActive: updatedItem.isActive,
+      categoryId: updatedItem.categoryId
+    });
+  } catch (error) {
+    console.error('Menu item update error:', error);
+    res.status(500).json({ error: 'Failed to update menu item' });
   }
 });
 

@@ -188,7 +188,9 @@ router.get('/restaurant/:restaurantId', authenticateToken, async (req, res) => {
 
     const whereClause = { restaurantId };
     if (status) {
-      whereClause.status = status;
+      // Status string'ini virgülle bölüp array'e çevir (örn: "PENDING,IN_PROGRESS" -> ["PENDING", "IN_PROGRESS"])
+      const statusArray = status.split(',').map(s => s.trim());
+      whereClause.status = { in: statusArray };
     }
 
     const orders = await prisma.order.findMany({
