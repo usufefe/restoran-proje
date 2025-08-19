@@ -42,8 +42,9 @@ router.post('/create', async (req, res) => {
       const vatRate = parseFloat(menuItem.vatRate);
       const qty = parseInt(item.qty);
 
+      // Fiyatlar KDV dahil - ayrı KDV hesaplaması yok
       const itemSubtotal = unitPrice * qty;
-      const itemVat = (itemSubtotal * vatRate) / 100;
+      const itemVat = 0; // KDV ayrı hesaplanmıyor
 
       subtotal += itemSubtotal;
       vatTotal += itemVat;
@@ -131,9 +132,9 @@ router.post('/create', async (req, res) => {
 
 /**
  * GET /api/orders/table/:tableId
- * Get orders for a table (customer view)
+ * Get orders for a table (customer view - PUBLIC)
  */
-router.get('/table/:tableId', authenticateQRToken, async (req, res) => {
+router.get('/table/:tableId', async (req, res) => {
   try {
     const { tableId } = req.params;
 
