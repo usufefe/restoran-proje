@@ -336,5 +336,91 @@ router.patch('/items/:itemId/status', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/orders/:orderId/cancel
+ * Cancel an order (PUBLIC - customer can cancel)
+ */
+router.post('/:orderId/cancel', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({ error: 'Cancel reason required' });
+    }
+
+    // Get order first to check status
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        table: true
+      }
+    });
+
+    if (!existingOrder) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Only allow cancellation for PENDING or IN_PROGRESS orders
+    if (!['PENDING', 'IN_PROGRESS'].includes(existingOrder.status)) {
+      return res.status(400).json({ 
+        error: `Cannot cancel order with status ${existingOrder.status}` 
+      });
+    }
+
+    // Update order to CANCELLED
+    const order = await prisma.order.update({
+      where: { id: orderId },
+      data: { 
+        status: 'CANCELLED',
+        cancelReason: reason,
+        cancelledAt: new Date()
+      },
+      include: {
+        table: true,
+        orderItems: {
+          include: {
+            menuItem: true
+          }
+        }
+      }
+    });
+
+    // Emit WebSocket event to notify kitchen and waiters
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`restaurant:${order.restaurantId}`).emit('order.cancelled', {
+        orderId: order.id,
+        tableCode: order.table.code,
+        tableName: order.table.name,
+        reason: reason,
+        cancelledAt: order.cancelledAt,
+        previousStatus: existingOrder.status
+      });
+
+      io.to(`kitchen:${order.restaurantId}:HOT`).emit('order.cancelled', {
+        orderId: order.id,
+        tableCode: order.table.code,
+        reason: reason
+      });
+
+      io.to(`table:${order.tenantId}:${order.restaurantId}:${order.tableId}`).emit('order.updated', {
+        orderId: order.id,
+        status: 'CANCELLED'
+      });
+    }
+
+    res.json({
+      orderId: order.id,
+      status: order.status,
+      cancelReason: order.cancelReason,
+      cancelledAt: order.cancelledAt
+    });
+  } catch (error) {
+    console.error('Order cancellation error:', error);
+    res.status(500).json({ error: 'Failed to cancel order' });
+  }
+});
+
 module.exports = router;
 

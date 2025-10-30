@@ -35,18 +35,23 @@ app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Make io available to routes
+app.set('io', io);
+
 // Routes
 const authRoutes = require('./routes/auth');
 const menuRoutes = require('./routes/menu');
 const orderRoutes = require('./routes/orders');
 const sessionRoutes = require('./routes/session');
 const adminRoutes = require('./routes/admin');
+const waiterCallRoutes = require('./routes/waiter-call');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/menu', menuRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/session', sessionRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/waiter-call', waiterCallRoutes);
 
 // Root route
 app.get('/', (req, res) => {
@@ -103,17 +108,15 @@ io.on('connection', (socket) => {
   });
 });
 
-// Make io available to routes
-app.set('io', io);
-
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// 404 handler
+// 404 handler (MUST BE LAST)
 app.use('*', (req, res) => {
+  console.log('404 - Route not found:', req.originalUrl);
   res.status(404).json({ error: 'Route not found' });
 });
 

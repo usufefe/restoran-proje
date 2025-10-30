@@ -109,7 +109,7 @@ router.get('/qr/:tableId', async (req, res) => {
     }
 
     // Generate QR URL
-    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const qrUrl = `${baseUrl}/menu/${table.tenantId}/${table.restaurantId}/${table.id}`;
 
     // Generate QR code image

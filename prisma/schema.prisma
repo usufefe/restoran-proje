@@ -60,6 +60,7 @@ model Table {
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   orders       Order[]
   tableSessions TableSession[]
+  waiterCalls  WaiterCall[]
   
   @@unique([restaurantId, code])
   @@map("tables")
@@ -120,23 +121,25 @@ enum OrderItemStatus {
 }
 
 model Order {
-  id           String      @id @default(uuid())
-  tenantId     String      @map("tenant_id")
-  restaurantId String      @map("restaurant_id")
-  tableId      String      @map("table_id")
-  status       OrderStatus @default(PENDING)
-  subtotal     Float       @default(0)
-  vatTotal     Float       @map("vat_total") @default(0)
-  grandTotal   Float       @map("grand_total") @default(0)
-  paymentMethod String?    @map("payment_method")
-  createdAt    DateTime    @default(now())
-  closedAt     DateTime?   @map("closed_at")
-  updatedAt    DateTime    @updatedAt
+  id            String      @id @default(uuid())
+  tenantId      String      @map("tenant_id")
+  restaurantId  String      @map("restaurant_id")
+  tableId       String      @map("table_id")
+  status        OrderStatus @default(PENDING)
+  subtotal      Float       @default(0)
+  vatTotal      Float       @map("vat_total") @default(0)
+  grandTotal    Float       @map("grand_total") @default(0)
+  paymentMethod String?     @map("payment_method")
+  cancelReason  String?     @map("cancel_reason")
+  cancelledAt   DateTime?   @map("cancelled_at")
+  createdAt     DateTime    @default(now())
+  closedAt      DateTime?   @map("closed_at")
+  updatedAt     DateTime    @updatedAt
   
-  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  table        Table       @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  orderItems   OrderItem[]
+  tenant         Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  restaurant     Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  table          Table       @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  orderItems     OrderItem[]
   kitchenTickets KitchenTicket[]
   
   @@map("orders")
@@ -226,4 +229,34 @@ model KitchenTicket {
   restaurant   Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   
   @@map("kitchen_tickets")
+}
+
+enum WaiterCallType {
+  CALL_WAITER
+  REQUEST_BILL
+}
+
+enum WaiterCallStatus {
+  PENDING
+  ACKNOWLEDGED
+  COMPLETED
+  CANCELLED
+}
+
+model WaiterCall {
+  id           String           @id @default(uuid())
+  tenantId     String           @map("tenant_id")
+  restaurantId String           @map("restaurant_id")
+  tableId      String           @map("table_id")
+  type         WaiterCallType
+  status       WaiterCallStatus @default(PENDING)
+  note         String?
+  acknowledgedAt DateTime?      @map("acknowledged_at")
+  completedAt  DateTime?        @map("completed_at")
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  
+  table        Table            @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  
+  @@map("waiter_calls")
 }
