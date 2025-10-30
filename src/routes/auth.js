@@ -37,6 +37,11 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    // Get first restaurant for this tenant (for waiter/chef redirect)
+    const firstRestaurant = await prisma.restaurant.findFirst({
+      where: { tenantId: user.tenantId }
+    });
+
     // Generate token
     const token = generateToken({
       userId: user.id,
@@ -54,7 +59,8 @@ router.post('/login', async (req, res) => {
         tenant: {
           id: user.tenant.id,
           name: user.tenant.name
-        }
+        },
+        restaurantId: firstRestaurant?.id || null
       }
     });
   } catch (error) {
